@@ -48,7 +48,11 @@ class ReshapeGeom():
 
     def run(self,fid): # recebendo  id da funcao
         
-        pass
+        for feature in polygonpr.getFeatures():
+            geometry = QgsGeometry.fromPolygon(feature.geometry().asPolygon())
+            for line in linepr.getFeatures():
+                t = feature.geometry().reshapeGeometry(line.geometry().asPolyline())   
+                print t
         
 
 
