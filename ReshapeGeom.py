@@ -29,10 +29,8 @@ class ReshapeGeom():
         self.toolbar.addAction(self.action)
         self.isEditing = 0
 
-        if self.layer:
-            self.iface.activeLayer().featureAdded.connect(self.run) # Sinal que chama a função e retorna o 'id'.
-        else:
-            pass
+    
+        
   
 
     def unload(self):
@@ -40,20 +38,32 @@ class ReshapeGeom():
         del self.toolbar
         
 
-    # def unChecked(self):
-
-    #     self.action.setCheckable(False)
-    #     self.action.setCheckable(True)
-     
-
-    def run(self,fid): # recebendo  id da funcao
+    def reshape(self,fid): # recebendo  id da funcao
         
-        for feature in polygonpr.getFeatures():
-            geometry = QgsGeometry.fromPolygon(feature.geometry().asPolygon())
-            for line in linepr.getFeatures():
-                t = feature.geometry().reshapeGeometry(line.geometry().asPolyline())   
-                print t
-        
+        # Obter os objetos dataProvider para as camadas chamadas 'line' e 'buffer'
+		linepr = QgsMapLayerRegistry.instance().mapLayersByName('line')[0].dataProvider()
+		bufferpr = QgsMapLayerRegistry.instance().mapLayersByName('buffer')[0].dataProvider()
+
+		# Cria uma camada de memória para armazenar o resultado
+		resultl = QgsVectorLayer("Polygon", "result", "memory")
+		resultpr = resultl.dataProvider()
+		QgsMapLayerRegistry.instance().addMapLayer(resultl)
+
+
+		for feature in bufferpr.getFeatures():
+		# Salva a geometria original
+			geometry = QgsGeometry.fromPolygon(feature.geometry().asPolygon())
+			for line in linepr.getFeatures():
+				# Cruza o polígono com a linha. Se eles se cruzarem, o recurso conterá uma metade da divisão
+				t = feature.geometry().reshapeGeometry(line.geometry().asPolyline())
+				if (t==0):
+					# Cria um novo recurso para manter a outra metade da divisão
+					diff = QgsFeature()
+					# Calcular a diferença entre a geometria original e a primeira metade da divisão
+					diff.setGeometry( geometry.difference(feature.geometry()))
+					# Adicione as duas metades da divisão à camada de memória
+					resultpr.addFeatures([feature])
+					resultpr.addFeatures([diff])
 
 
 

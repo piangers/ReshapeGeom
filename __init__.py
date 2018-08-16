@@ -3,5 +3,5 @@
 def classFactory(iface):
 
 
-    from .BlockSpatial import BlockSpatial
-    return BlockSpatial(iface)
+    from .ReshapeGeom import ReshapeGeom
+    return ReshapeGeom(iface)
