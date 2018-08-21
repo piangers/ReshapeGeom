@@ -2,7 +2,7 @@
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import QColor, QInputDialog, QLineEdit, QAction, QIcon
-from qgis.core import QGis, QgsMapLayerRegistry, QgsDistanceArea, QgsFeature, QgsPoint, QgsGeometry, QgsField, QgsVectorLayer  
+from qgis.core import QGis, QgsMapLayerRegistry, QgsDistanceArea, QgsFeature, QgsPoint, QgsGeometry, QgsField, QgsVectorLayer, QgsMapLayer
 from qgis.gui import QgsMapToolEmitPoint, QgsRubberBand, QgsMapTool
 
 
@@ -22,20 +22,27 @@ class ReshapeGeom():
     def initVariables(self):
         # Criação da action e da toolbar
         self.toolbar = self.iface.addToolBar("Reshape")
-        pai = self.iface.mainWindow()
+        path = self.iface.mainWindow()
         icon_path = ':/plugins/ReshapeGeom/icon.png'
-        self.action = QAction (QIcon (icon_path),u"Realiza o reshape de polígonos", pai)
+        self.action = QAction (QIcon (icon_path),u"Realiza o reshape de polígonos", path)
         self.action.setObjectName ("ReshapeGeom")
         self.action.setStatusTip(None)
         self.action.setWhatsThis(None)
         self.action.setCheckable(True)
         self.toolbar.addAction(self.action)
 
+        self.lastButton = Qt.RightButton
+
         self.createRubberBand()
-#        self.start()
+        self.start()
+
+    def initSignals(self):
+        self.action.toggled.connect(self.initRubberBand)
+        self.myMapTool.canvasClicked.connect(self.mouseClick)
+        self.iface.mapCanvas().currentLayerChanged.connect(self.start)
 
     def createRubberBand(self):
-        self.myRubberBand = QgsRubberBand( self.iface.mapCanvas() )
+        self.myRubberBand = QgsRubberBand( self.iface.mapCanvas())
         color = QColor(78, 97, 114)
         color.setAlpha(190)
         self.myRubberBand.setColor(color)
@@ -45,22 +52,17 @@ class ReshapeGeom():
     def start(self):
         self.myRubberBand.reset()
         self.previousMapTool = self.iface.mapCanvas().mapTool()
-        self.myMapTool = QgsMapToolEmitPoint( self.iface.mapCanvas() )
+        self.myMapTool = QgsMapToolEmitPoint( self.iface.mapCanvas())
         self.isEditing = 0
         # Set MapTool
-        self.iface.mapCanvas().setMapTool( self.myMapTool )
-        self.iface.mapCanvas().xyCoordinates.connect( self.mouseMove )
+        self.iface.mapCanvas().setMapTool(self.myMapTool)
+        self.iface.mapCanvas().xyCoordinates.connect( self.mouseMove)
+        self.myMapTool.canvasClicked.connect(self.mouseClick)
         
-
-    def initSignals(self):
-        self.action.toggled.connect(self.initRubberBand)
-        self.myMapTool.canvasClicked.connect( self.mouseClick )
-        self.iface.mapCanvas().currentLayerChanged().connect(self.start)
 
     def initRubberBand(self, b):
         if b:
-            self.start()
-            
+            self.start()   
         else:
             self.disconnect()
 
@@ -80,44 +82,56 @@ class ReshapeGeom():
     def unload(self):
         self.disconnect()        
 
-    def mouseClick( self, currentPos, clickedButton ):
+    def mouseClick(self, currentPos, clickedButton):
         if self.iface.mapCanvas().currentLayer().type() != QgsMapLayer.VectorLayer:
             return
         else:
-            if self.iface.mapCanvas().currentLayer().geometryType() != QGis.Polygon:
+            if self.iface.mapCanvas().currentLayer().geometryType() != QGis.Polygon and self.iface.mapCanvas().currentLayer().geometryType() != QGis.Line: #
                 return
             
 
-        if clickedButton == Qt.LeftButton: 
-            self.myRubberBand.addPoint( QgsPoint(currentPos) )
+        if clickedButton == Qt.LeftButton:
+            if self.lastButton == Qt.RightButton:
+                self.myRubberBand.reset()
+
+            self.lastButton = Qt.LeftButton
+            
             self.isEditing = 1
             
-        elif clickedButton == Qt.RightButton and self.myRubberBand.numberOfVertices() > 2:
+        elif clickedButton == Qt.RightButton and self.myRubberBand.numberOfVertices() > 2:  
+            self.lastButton = Qt.RightButton
+
+#____________________________________________________________________________________________________________________
+
             self.isEditing = 0
             
-            layer = self.iface.mapCanvas().currentLayer()
-	    layer.startEditing()
-            line = self.myRubberBand.geometry()
-            numInt = 0
+            layer = self.iface.mapCanvas().currentLayer() # layer atual
+            layer.startEditing() # Ligando a edição da layer
+            line = self.myRubberBand.asGeometry() # Linha do rubberband 
+           
 
-           for feat in layer.getFeatures():
-               geom = feat.geometry()
-               if geom.intersects(line):
-                   numInt = numInt + 1
-                       geom.reshapeGeometry(line.asPolyline())
-                       layer.changeGeometry(feat.id(), geom)
+            for feat in layer.getFeatures():
+               geom = feat.geometry() # geometria que receberá o reshape.
+               if geom.intersects(line): # Se intersecta
+                    
+                    geom.reshapeGeometry(line.asPolyline()) # realiza o reshape entre a linha e a geometria.
+                    layer.changeGeometry(feat.id(), geom) 
+                    self.iface.mapCanvas().refresh() # Refresh para atualizar, mas não salvar as alterações
 
-          if numInt == 0:
-              print u'Linha de corte não intersecta nenhum polígono!'
-          else:
-              self.iface.mapCanvas().refresh()
-
-
+#___________________________________________________________________________________________________________________
+   
     def mouseMove( self, currentPos ):
+          
+        # FreeHand 
+      
         if self.isEditing == 1:
-            self.myRubberBand.movePoint( QgsPoint(currentPos) )
+          # self.myRubberBand.movePoint(QgsPoint(currentPos)) # Rubberband
+            self.myRubberBand.addPoint(QgsPoint(currentPos)) # Freehand
 
 
 
-		
+	def keyPressEvent(self, event):
+       # if event.key() == QtCore.Key_Ctrl: Preciso implementar o Ctrl corretamente.
+        #event.accept()
+            return
 	
