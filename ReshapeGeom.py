@@ -4,7 +4,7 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import QColor, QInputDialog, QLineEdit, QAction, QIcon
 from qgis.core import QGis, QgsMapLayerRegistry, QgsDistanceArea, QgsFeature, QgsPoint, QgsGeometry, QgsField, QgsVectorLayer, QgsMapLayer
 from qgis.gui import QgsMapToolEmitPoint, QgsRubberBand, QgsMapTool
-
+import resources_rc
 
 class ReshapeGeom():
     
@@ -24,7 +24,7 @@ class ReshapeGeom():
         self.toolbar = self.iface.addToolBar("Reshape")
         path = self.iface.mainWindow()
         icon_path = ':/plugins/ReshapeGeom/icon.png'
-        self.action = QAction (QIcon (icon_path),u"Realiza o reshape de polígonos", path)
+        self.action = QAction (QIcon (icon_path),u"Reshape de feição", path)
         self.action.setObjectName ("ReshapeGeom")
         self.action.setStatusTip(None)
         self.action.setWhatsThis(None)
