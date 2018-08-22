@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-
 from PyQt4.QtCore import *
 from PyQt4.QtGui import QColor, QInputDialog, QLineEdit, QAction, QIcon
 from qgis.core import QGis, QgsMapLayerRegistry, QgsDistanceArea, QgsFeature, QgsPoint, QgsGeometry, QgsField, QgsVectorLayer, QgsMapLayer
@@ -8,11 +7,13 @@ from qgis.gui import QgsMapToolEmitPoint, QgsRubberBand, QgsMapTool
 import resources_rc
 
 class ReshapeGeom():
+    
 
     def __init__(self, iface):
         self.iface = iface
 		
     def initGui(self): 
+		
         # cria uma ação que iniciará a configuração do plugin 
         self.initVariables()
         self.initSignals()
@@ -32,20 +33,13 @@ class ReshapeGeom():
 
         self.lastButton = Qt.RightButton
 
-        self.controlStatus = False
-
         self.createRubberBand()
-
-        self.previousMapTool = self.iface.mapCanvas().mapTool()
-        self.isEditing = 0
-
-        #self.start()
+        self.start()
 
     def initSignals(self):
-        # self.action.toggled.connect(self.initRubberBand)
-        #self.myMapTool.canvasClicked.connect(self.mouseClick)
+        self.action.toggled.connect(self.initRubberBand)
+        self.myMapTool.canvasClicked.connect(self.mouseClick)
         self.iface.mapCanvas().currentLayerChanged.connect(self.start)
-
 
     def createRubberBand(self):
         self.myRubberBand = QgsRubberBand( self.iface.mapCanvas())
@@ -55,17 +49,15 @@ class ReshapeGeom():
         self.myRubberBand.setFillColor(QColor(255, 0, 0, 40))
         self.myRubberBand.setBorderColor(QColor(255, 0, 0, 200))
 
-
     def start(self):
-        self.createRubberBand()
-        
-        # Set MapTool
+        self.myRubberBand.reset()
+        self.previousMapTool = self.iface.mapCanvas().mapTool()
         self.myMapTool = QgsMapToolEmitPoint( self.iface.mapCanvas())
+        self.isEditing = 0
+        # Set MapTool
         self.iface.mapCanvas().setMapTool(self.myMapTool)
         self.iface.mapCanvas().xyCoordinates.connect( self.mouseMove)
-        self.iface.mapCanvas().keyPressed.connect( self.keyPressEvent )
-        self.iface.mapCanvas().keyReleased.connect( self.keyReleaseEvent )
-        # self.myMapTool.canvasClicked.connect(self.mouseClick)
+        self.myMapTool.canvasClicked.connect(self.mouseClick)
         
 
     def initRubberBand(self, b):
@@ -74,86 +66,65 @@ class ReshapeGeom():
         else:
             self.disconnect()
 
-
     def disconnect(self):
-        self.iface.mapCanvas().setMapTool(self.previousMapTool)
+
+        self.iface.mapCanvas().unsetMapTool(self.myMapTool)
         try:
             self.iface.mapCanvas().xyCoordinates.disconnect (self.mouseMove)
-            self.myMapTool.canvasClicked.disconnect(self.mouseClick)
-            self.isEditing = 0
-            self.lastButton = Qt.RightButton
-            self.myRubberBand.reset()
-
         except:
             pass
 
         try:
-            #self.myRubberBand.reset()
-            del self.myRubberBand
-            # del self.myMapTool
+            self.myRubberBand.reset()
         except:
             pass
-
 
     def unload(self):
         self.disconnect()        
 
-  
-    def doReshape(self):
-        self.isEditing = 0
-        
-        layer = self.iface.mapCanvas().currentLayer() # layer atual
-        layer.startEditing() # Ligando a edição da layer
-        line = self.myRubberBand.asGeometry() # Linha do rubberband 
-        
+    def mouseClick(self, currentPos, clickedButton):
+        if self.iface.mapCanvas().currentLayer().type() != QgsMapLayer.VectorLayer:
+            return
+        else:
+            if self.iface.mapCanvas().currentLayer().geometryType() != QGis.Polygon and self.iface.mapCanvas().currentLayer().geometryType() != QGis.Line: #
+                return
+            
 
-        for feat in layer.getFeatures():
-            geom = feat.geometry() # geometria que receberá o reshape.
-            if geom.intersects(line): # Se intersecta
-                
-                geom.reshapeGeometry(line.asPolyline()) # realiza o reshape entre a linha e a geometria.
-                layer.changeGeometry(feat.id(), geom) 
-                self.iface.mapCanvas().refresh() # Refresh para atualizar, mas não salvar as alterações
-        
-        self.myRubberBand.reset()
+        if clickedButton == Qt.LeftButton:
+            if self.lastButton == Qt.RightButton:
+                self.myRubberBand.reset()
 
+            self.lastButton = Qt.LeftButton
+            
+            self.isEditing = 1
+            
+        elif clickedButton == Qt.RightButton and self.myRubberBand.numberOfVertices() > 2:  
+            self.lastButton = Qt.RightButton
+
+#____________________________________________________________________________________________________________________
+
+            self.isEditing = 0
+            
+            layer = self.iface.mapCanvas().currentLayer() # layer atual
+            layer.startEditing() # Ligando a edição da layer
+            line = self.myRubberBand.asGeometry() # Linha do rubberband 
+           
+
+            for feat in layer.getFeatures():
+               geom = feat.geometry() # geometria que receberá o reshape.
+               if geom.intersects(line): # Se intersecta
+                    
+                    geom.reshapeGeometry(line.asPolyline()) # realiza o reshape entre a linha e a geometria.
+                    layer.changeGeometry(feat.id(), geom) 
+                    self.iface.mapCanvas().refresh() # Refresh para atualizar, mas não salvar as alterações
+
+#___________________________________________________________________________________________________________________
    
-    def mouseMove( self, currentPos):   
+    def mouseMove( self, currentPos ):
+          
         # FreeHand 
+      
         if self.isEditing == 1:
           # self.myRubberBand.movePoint(QgsPoint(currentPos)) # Rubberband
             self.myRubberBand.addPoint(QgsPoint(currentPos)) # Freehand
 
-
-    def keyPressEvent(self, event):
-        if event.key() == QtCore.Qt.Key_Control: 
-            if self.iface.mapCanvas().currentLayer().type() != QgsMapLayer.VectorLayer:
-                event.accept()
-
-            elif self.controlStatus == False:
-                self.controlStatus = True
-                self.isEditing = 1
-                self.previousMapTool = self.iface.mapCanvas().mapTool()
-                self.action.setChecked(True)
-                self.start()
-            else:
-                event.accept()
-
-    
-    def keyReleaseEvent(self, event):
-        if event.key() == QtCore.Qt.Key_Control: 
-            if self.iface.mapCanvas().currentLayer().type() != QgsMapLayer.VectorLayer:
-                event.accept()
-
-            elif self.controlStatus == True:
-                if self.myRubberBand.numberOfVertices() > 2:
-                    self.doReshape()
-                self.controlStatus = False
-                self.action.setChecked(False)
-                self.iface.mapCanvas().unsetMapTool(self.myMapTool)
-                self.iface.mapCanvas().setMapTool(self.previousMapTool)
-                self.disconnect()
-            else:
-                event.accept()
-    
-	
