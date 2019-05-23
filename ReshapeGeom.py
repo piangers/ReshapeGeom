@@ -116,7 +116,7 @@ class ReshapeGeom():
             geom = feat.geometry() # geometria que receberá o reshape.
             if geom.intersects(line): # Se intersecta.
                 #print (geom) 
-                geom.reshapeGeometry(line.asPolyline()) # realiza o reshape entre a linha e a geometria. AQUI ESTA APRESENTANDO ERRO DE TIPO "Line"
+                geom.reshapeGeometry(line.asPolyline()) # realiza o reshape entre a linha e a geometria. AQUI ESTA APRESENTANDO ERRO DE TIPO "TypeError: QgsGeometry.reshapeGeometry(): argument 1 has unexpected type 'list'"
                 layer.changeGeometry(feat.id(), geom)
                 self.iface.mapCanvas().refresh() # Refresh para atualizar, mas não salvar as alterações.
 
