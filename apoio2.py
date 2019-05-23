@@ -41,7 +41,7 @@ class ReshapeGeom(QgsMapTool):
         self.iface.mapCanvas().currentLayerChanged.connect(self.start)
 
     def createRubberBand(self):
-        self.myRubberBand = QgsRubberBand( self.iface.mapCanvas())
+        self.myRubberBand = QgsRubberBand(self.iface.mapCanvas())
         color = QColor(78, 97, 114)
         color.setAlpha(190)
         self.myRubberBand.setColor(color)
@@ -51,11 +51,11 @@ class ReshapeGeom(QgsMapTool):
     def start(self):
         self.myRubberBand.reset()
         self.previousMapTool = self.iface.mapCanvas().mapTool()
-        self.myMapTool = QgsMapToolEmitPoint( self.iface.mapCanvas())
+        self.myMapTool = QgsMapToolEmitPoint(self.iface.mapCanvas())
         self.isEditing = 0
         # Set MapTool
         self.iface.mapCanvas().setMapTool(self.myMapTool)
-        self.iface.mapCanvas().xyCoordinates.connect( self.mouseMove)
+        self.iface.mapCanvas().xyCoordinates.connect(self.mouseMove)
         self.iface.mao
         self.myMapTool.canvasClicked.connect(self.mouseClick)
         
@@ -98,7 +98,7 @@ class ReshapeGeom(QgsMapTool):
             
             self.isEditing = 1
             
-        elif clickedButton == Qt.RightButton and self.myRubberBand.numberOfVertices() > 2:  
+        elif clickedButton == Qt.RightButton and self.myRubberBand.numberOfVertices() > 2:
             self.lastButton = Qt.RightButton
 
 #____________________________________________________________________________________________________________________
@@ -107,8 +107,8 @@ class ReshapeGeom(QgsMapTool):
             
             layer = self.iface.mapCanvas().currentLayer() # layer atual
             layer.startEditing() # Ligando a edição da layer
-            line = self.myRubberBand.asGeometry() # Linha do rubberband 
-           
+            line = self.myRubberBand.asGeometry() # Linha do rubberband
+
 
             for feat in layer.getFeatures():
                geom = feat.geometry() # geometria que receberá o reshape.
